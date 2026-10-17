@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     exploration_nudge_steps: int = 8
     command_policy: bool = True
 
-    memory_enabled: bool = False
+    memory_enabled: bool = True
     memory_dir: Path | None = None
     memory_require_snapshot: bool = True
     memory_preretrieve: bool = True
@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     model_critic: str | None = None
     llm_error_retries: int = 0
 
-    skills_external: bool = False
+    skills_external: bool = True
 
     llm_cache_url: str | None = None
     llm_cache_namespace: str = "dev"

@@ -1,8 +1,10 @@
 """命令行入口:
 
     migration-agent migrate <repo> [--target <name>] [--max-steps N] [--profile baseline|full] [--python PATH]
+                            [--ui live|plain|quiet] [-v]
     migration-agent trace show <trace.jsonl>
     migration-agent trace summary <trace.jsonl>
+    migration-agent trace replay <trace.jsonl> [--speed 5.0] [--ui live|plain]
     migration-agent index [--refresh]  /  kb-search <query>   (知识库)
 
 只做参数解析与装配,不含业务逻辑。
@@ -10,6 +12,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shlex
 from pathlib import Path
@@ -26,8 +29,9 @@ app.add_typer(trace_app, name="trace")
 console = Console()
 
 
-def _run_session(task, settings, profile, python, pricing, first_loop):
-    """dynamic_plan 开启时经 orchestrator.Session 运行(最多 orchestrator_attempts 次尝试,共用一个沙箱)。"""
+def _run_session(task, settings, profile, python, pricing, first_loop, observers=None):
+    """dynamic_plan 开启时经 orchestrator.Session 运行(最多 orchestrator_attempts 次尝试,共用一个沙箱)。
+    `observers` 传给每次尝试的 assemble,保证每个新 tracer 都被实时 UI 监听。"""
     from .agent.assemble import assemble
     from .agent.orchestrator import Session
 
@@ -41,7 +45,13 @@ def _run_session(task, settings, profile, python, pricing, first_loop):
 
     def build(t, attempt=1):
         return assemble(
-            t, settings, tool_profile=profile, python_executable=python, pricing=pricing, executor=executor
+            t,
+            settings,
+            tool_profile=profile,
+            python_executable=python,
+            pricing=pricing,
+            executor=executor,
+            observers=observers,
         )
 
     try:
@@ -59,7 +69,7 @@ def migrate(
     repo: Path = typer.Argument(..., exists=True, file_okay=False, help="Path to the repository to migrate"),
     target: str | None = typer.Option(None, help="Migration target (default: the default target package)"),
     max_steps: int | None = typer.Option(None, help="Override max agent steps"),
-    profile: str = typer.Option("baseline", help="Tool profile: baseline | full"),
+    profile: str = typer.Option("full", help="Tool profile: baseline | full"),
     python: str | None = typer.Option(
         None, "--python", help="Python executable used to run the repo's tests"
     ),
@@ -81,10 +91,20 @@ def migrate(
         help="After the run, extract experience candidates into this store (never published automatically)",
     ),
     config: Path | None = typer.Option(None, help="YAML with `settings` overrides and `pricing`"),
+    ui: str = typer.Option(
+        "live",
+        "--ui",
+        help="Progress display: live | plain | quiet (live falls back to plain when not a TTY)",
+    ),
+    verbose: bool = typer.Option(False, "-v", "--verbose", help="Show the first lines of every tool result"),
 ) -> None:
     """Migrate REPO to TARGET until its test suite passes."""
     from .agent.assemble import assemble
     from .tools.pytest_tool import cleanup_artifacts
+    from .trace.live import make_renderer, summary_panel, use_ascii
+
+    if ui not in ("live", "plain", "quiet"):
+        raise typer.BadParameter("ui must be live, plain or quiet")
 
     settings = load_settings()  # 导入 config 时已 load_dotenv()
     settings = settings.model_copy(
@@ -118,7 +138,7 @@ def migrate(
         overrides = {k: v for k, v in data.get("settings", {}).items() if k != "sandbox_backend"}
         settings = settings.model_copy(update=overrides)
         pricing = Pricing.model_validate(data["pricing"]) if "pricing" in data else None
-    if settings.memory_enabled and profile != "full":
+    if memory_dir is not None and profile != "full":
         raise typer.BadParameter("--memory-dir requires --profile full")
     if sandbox not in ("docker", "local"):
         raise typer.BadParameter("sandbox must be docker or local")
@@ -132,7 +152,11 @@ def migrate(
     )
     if test_cmd:
         task.test_cmd = shlex.split(test_cmd)
-    loop, ctx = assemble(task, settings, tool_profile=profile, python_executable=python, pricing=pricing)
+    renderer = make_renderer(ui, console, verbose=verbose)
+    observers = [renderer] if renderer is not None else []
+    loop, ctx = assemble(
+        task, settings, tool_profile=profile, python_executable=python, pricing=pricing, observers=observers
+    )
     recorder = None
     if settings.memory_extract_candidates:
         from .migration.evidence import EvidenceRecorder
@@ -145,31 +169,24 @@ def migrate(
     )
 
     try:
-        if (
-            profile == "full"
-            and settings.extension_mode == "hooks"
-            and settings.dynamic_plan
-            and settings.orchestrator_attempts > 1
-        ) and recorder is None:
-            result = _run_session(task, settings, profile, python, pricing, loop)
-        else:
-            result = loop.run(task, ctx)
+        with renderer or contextlib.nullcontext():  # Live 在这里启动;Ctrl+C 时同样退出 Live、恢复终端
+            if (
+                profile == "full"
+                and settings.extension_mode == "hooks"
+                and settings.dynamic_plan
+                and settings.orchestrator_attempts > 1
+            ) and recorder is None:
+                result = _run_session(task, settings, profile, python, pricing, loop, observers=observers)
+            else:
+                result = loop.run(task, ctx)
     finally:
         loop.tracer.close()
         cleanup_artifacts(ctx.repo_path)
     if recorder is not None:
         _extract_after_run(settings, recorder, result, ctx, loop=loop, pricing=pricing)
 
-    color = "green" if result.success else "red"
-    console.print(f"\n[{color} bold]{'SUCCESS' if result.success else 'FAILED'}[/] ({result.reason})")
-    console.print(
-        f"tests {result.tests_passed}/{result.tests_total}  steps {result.steps}  "
-        f"tokens in={result.tokens_in} cached={result.tokens_cached} out={result.tokens_out}  {result.duration_s:.1f}s"
-    )
-    console.print(
-        f"violations {result.violations}  rollbacks {result.rollbacks}  "
-        f"deprecated API candidates {result.deprecated_api_count}  compatibility imports {result.compatibility_import_count}"
-    )
+    console.print()
+    console.print(summary_panel(result.model_dump(mode="json"), ascii=use_ascii(console)))
     if settings.llm_cache_url:  # 命中不计费;账本只记真实发出的请求
         from .agent.llm_cache import find_cache
 
@@ -180,11 +197,8 @@ def migrate(
                 f"llm cache [{cache.namespace}] hits {s['hits']} misses {s['misses']} "
                 f"saved in={s['saved_tokens_in']} out={s['saved_tokens_out']} ~USD {s['saved_usd']:.4f}"
             )
-    if result.files_changed:
-        console.print("changed: " + ", ".join(result.files_changed))
     if result.message:
-        console.print(f"\n{result.message}")
-    console.print(f"\ntrace: {result.trace_path}")
+        console.print(f"\n{result.message}", markup=False, highlight=False)
     raise typer.Exit(code=0 if result.success else 1)
 
 
@@ -285,6 +299,43 @@ def trace_summary(path: Path = typer.Argument(..., exists=True, dir_okay=False))
 
     s = summarize(load(path))
     console.print_json(s.model_dump_json())
+
+
+@trace_app.command("replay")
+def trace_replay(
+    path: Path = typer.Argument(..., exists=True, dir_okay=False),
+    speed: float = typer.Option(
+        5.0, help="Replay speed multiplier (gaps between events are divided by this)"
+    ),
+    ui: str = typer.Option("live", "--ui", help="live | plain (live falls back to plain when not a TTY)"),
+    verbose: bool = typer.Option(False, "-v", "--verbose", help="Show the first lines of every tool result"),
+) -> None:
+    """Replay a trace through the live progress UI (no API calls)."""
+    from pydantic import ValidationError
+
+    from .trace.analyze import load
+    from .trace.live import make_renderer, replay, summary_panel, use_ascii
+
+    if ui not in ("live", "plain"):
+        raise typer.BadParameter("ui must be live or plain")
+    if speed <= 0:
+        raise typer.BadParameter("speed must be > 0")
+    try:
+        events = load(path)
+    except (ValidationError, ValueError) as e:
+        console.print(f"[red]not a trace file[/] ({path}): {str(e).splitlines()[0]}")
+        raise typer.Exit(code=2) from None
+    if not events:
+        console.print(f"[red]empty trace[/] {path}")
+        raise typer.Exit(code=2)
+    renderer = make_renderer(ui, console, verbose=verbose, time_scale=speed)
+    with renderer:
+        replay(events, renderer, speed=speed)
+    end = next((e for e in reversed(events) if e.kind == "run_end"), None)
+    if end is not None:
+        out = renderer.console
+        out.print()
+        out.print(summary_panel({**end.payload, "trace_path": str(path)}, ascii=use_ascii(out)))
 
 
 @app.command()

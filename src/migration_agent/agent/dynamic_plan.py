@@ -162,7 +162,13 @@ class DynamicPlanHook(Hook):
         if self.tracer is not None and self.state is not None:
             self.tracer.log(
                 "plan",
-                {"source": source, "version": self.state.version, "counts": self.state.counts(), **payload},
+                {
+                    "source": source,
+                    "version": self.state.version,
+                    "counts": self.state.counts(),
+                    "items": plan_items(self.state),
+                    **payload,
+                },
             )
 
     def _charge(self, tokens_in=0, cache_read=0, cache_write=0, tokens_out=0) -> None:
@@ -302,7 +308,7 @@ class DynamicPlanHook(Hook):
             meta["plan_uncovered_initial"] = len(self.state.uncovered_initial)
         self._classify(report, set())
         meta["plan_items"] = len(self.state.items)
-        self.record("initial", items=len(self.state.items), uncovered=len(self.state.uncovered_initial))
+        self.record("initial", n_items=len(self.state.items), uncovered=len(self.state.uncovered_initial))
         static_items = [i for i in self.state.items if i.origin in ("static", "runtime_usage")]
         if self.initial_plan is None and (not static_items or self.state.uncovered_initial):
             self.replan("start")
@@ -487,7 +493,7 @@ class DynamicPlanHook(Hook):
         s = self.stats
         return {
             "completion_rate": round(self.state.completion_rate(), 4) if self.state else 0.0,
-            "items": len(self.state.items) if self.state else 0,
+            "n_items": len(self.state.items) if self.state else 0,
             "edits": s.edits,
             "edits_in_plan": s.edits_in_plan,
             "replans": dict(s.replans),
@@ -588,6 +594,11 @@ class DynamicPlanHook(Hook):
                     "plan_version": self.state.version if self.state else 0,
                 },
             )
+            if self.state is not None:  # 只通知实时 UI(不写盘):重规划后立即重绘清单
+                self.tracer.emit(
+                    "plan",
+                    {"source": "replan", "version": self.state.version, "items": plan_items(self.state)},
+                )
 
     def _failure_pack(self, focus: str | None) -> str:
         rep = self._last_report
@@ -632,3 +643,8 @@ def _role_usage(router: Any, role: str) -> dict[str, float]:
         "cost": u.cost,
         "calls": u.calls,
     }
+
+
+def plan_items(state: PlanState) -> list[dict[str, str]]:
+    """plan 事件里的条目清单(供实时 UI 渲染):id / status / goal(截断 100 字符)。"""
+    return [{"id": it.id, "status": it.status, "goal": it.goal[:100]} for it in state.items]

@@ -230,6 +230,8 @@ class AgentLoop:
             state.cache_write += resp.cache_write_tokens
             state.tokens_out += resp.tokens_out
             previous_input_tokens = resp.tokens_in + resp.cache_read_tokens + resp.cache_write_tokens
+            # 只通知实时 UI(不写盘):llm_call 的 trace payload 只保留 text[:500]
+            self.tracer.emit("assistant_text", {"text": resp.text, "step": state.step})
             state.add_assistant(resp.content)
 
             tool_uses = resp.tool_uses

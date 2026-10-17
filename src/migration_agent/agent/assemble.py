@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 
@@ -69,9 +70,11 @@ def assemble(
     knowledge=None,
     memory=None,
     pricing=None,
+    observers: list[Callable] | None = None,
 ) -> tuple[AgentLoop, ToolContext]:
     """`knowledge`:full 档使用的检索器(需有 `retrieve`);为空时按 settings.knowledge_dir 加载共享实例。
-    `memory`:经验库(MemorySnapshot / ExperienceStore);仅 full 档且 memory_enabled 时使用。"""
+    `memory`:经验库(MemorySnapshot / ExperienceStore);仅 full 档且 memory_enabled 时使用。
+    `observers`:trace 监听器(如实时 UI),逐个 add_listener 到本次的 tracer(外部传入的 tracer 同样适用)。"""
     if tool_profile not in TOOL_PROFILES:
         raise ValueError(f"unknown tool_profile {tool_profile!r}; choose from {TOOL_PROFILES}")
 
@@ -173,6 +176,8 @@ def assemble(
     initial_context_provider = _compose(providers) if providers else None
 
     tracer = tracer or Tracer(settings.traces_dir / f"{task.run_id or _ts()}.jsonl", run_id=task.run_id)
+    for fn in observers or ():
+        tracer.add_listener(fn)
     if (
         settings.protect_collected_tests
     ):  # 默认关闭;pytest 实际收集到的测试文件只读(覆盖 ini 里的 testpaths 等)
@@ -261,7 +266,7 @@ def assemble(
         context_manager = None
         loop_router = None
     loop_target = target
-    if settings.skills_external:  # 默认关闭;关闭时系统提示不变
+    if settings.skills_external:  # 默认开启;系统提示展示目录，正文按需加载
         from .skills import LoadSkillTool, SkilledTarget, SkillLibrary
 
         if target.skills_dir is None:
