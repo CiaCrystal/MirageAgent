@@ -1,0 +1,68 @@
+{
+ "schema_version": 1,
+ "content_version": "205abeed1781ac3b4b11a214943fa0329ee5d9559e37565655a238795fdcdd0f",
+ "built_at": "2026-10-17T09:40:21+00:00",
+ "entries": [
+  {
+   "id": "exp-da081d10a5d1",
+   "file": "experiences/exp-da081d10a5d1.md",
+   "sha256": "2dde2182de3f7092e57925fcc0474b8abb3d35251e51e79f21ad6235582519f2",
+   "content_hash": "12f5f741883d1955ff66ad381a4ace52c01c74fe99f257f560827864213d20d0",
+   "dedup_key": "da081d10a5d146ff",
+   "status": "approved",
+   "target": "pydantic-v2",
+   "versions": {
+    "pydantic": ">=2.0,<3",
+    "observed": "2.14.1"
+   },
+   "error_signature": "failure: ValidationError: string_type [pydantic.validation]",
+   "sig_key": "failure: validationerror: string_type [pydantic.validation]",
+   "error_type": "failure",
+   "api_tags": [
+    "ConfigDict",
+    "allow_mutation",
+    "class Config",
+    "frozen=",
+    "model_config"
+   ],
+   "sources": [
+    {
+     "repo": "github.com/zuehlke/confz",
+     "family": "fam-confz",
+     "run_id": "source-001"
+    }
+   ],
+   "tokens": 475,
+   "text": "failure: ValidationError: string_type [pydantic.validation]\npydantic_core._pydantic_core.ValidationError: 1 validation error for OuterConfig\nattr2\nInput should be a valid string [type=string_type, input_value=2, input_type=int]\nFor further information visit https:<path>\nConfigDict allow_mutation class Config frozen= model_config\npydantic v2 is installed (source run used 2.14.1) the code still uses the v1 API `allow_mutation` the code still uses the v1 API `class Config` the failing traceback points into the module that defines the affected model/function\n--- a/confz/confz.py\n+++ b/confz/confz.py\n@@ -98,6 +98,8 @@\n     listeners: ClassVar[Optional[List[Any]]] = None  #: *for internal use only*\n \n-    class Config:\n-        allow_mutation = False\n+    # pydantic v1 coerced numbers to strings, v2 requires an explicit opt-in\n+    model_config = ConfigDict(\n+        frozen=True, coerce_numbers_to_str=True\n+    )  #: pydantic model config\n \n     @classmethod"
+  },
+  {
+   "id": "exp-f7961c98394c",
+   "file": "experiences/exp-f7961c98394c.md",
+   "sha256": "a4752cd502ea11e45a444d1ca5be97663813d18f1aa8b0c0d87338e569ad2b73",
+   "content_hash": "2b4aeaa73c90bcb6f89df4e52c9b59fe784c9db223c23a9f7a8fe8ffaaff2661",
+   "dedup_key": "f7961c98394c9c13",
+   "status": "approved",
+   "target": "pydantic-v2",
+   "versions": {
+    "pydantic": ">=2.0,<3",
+    "observed": "2.14.1"
+   },
+   "error_signature": "error: TypeError: conlist() got an unexpected keyword argument 'min_items'",
+   "sig_key": "error: typeerror: conlist() got an unexpected keyword argument 'min_items'",
+   "error_type": "error",
+   "api_tags": [
+    "min_items",
+    "min_length="
+   ],
+   "sources": [
+    {
+     "repo": "github.com/developmentseed/geojson-pydantic",
+     "family": "fam-geojson-pydantic",
+     "run_id": "source-002"
+    }
+   ],
+   "tokens": 499,
+   "text": "error: TypeError: conlist() got an unexpected keyword argument 'min_items'\nTypeError: conlist() got an unexpected keyword argument 'min_items'\nmin_items min_length=\npydantic v2 is installed (source run used 2.14.1) the code still uses the v1 API `min_items`\n--- a/geojson_pydantic/types.py\n+++ b/geojson_pydantic/types.py\n@@ -1,7 +1,7 @@\n \"\"\"Types for geojson_pydantic models\"\"\"\n \n-from typing import TYPE_CHECKING, List, Optional, Tuple, TypeVar, Union\n+from typing import TYPE_CHECKING, Annotated, List, Optional, Tuple, TypeVar, Union\n \n-from pydantic import conlist\n+from pydantic import Field\n \n T = TypeVar(\"T\")\n@@ -49,6 +49,6 @@\n     LinearRing = List[Position]\n else:\n-    LineStringCoords = conlist(Position, min_items=2)\n-    LinearRing = conlist(Position, min_items=4)\n+    LineStringCoords = Annotated[List[Position], Field(min_length=2)]\n+    LinearRing = Annotated[List[Position], Field(min_length=4)]\n \n MultiPointCoords = List[Position]"
+  }
+ ]
+}

@@ -1,0 +1,6 @@
+rules:
+  - id: command-policy
+    tool: run_command
+    predicate: command_policy
+    decision: deny
+    meta_key: policy_refusal

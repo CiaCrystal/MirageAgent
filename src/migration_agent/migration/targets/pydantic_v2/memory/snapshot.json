@@ -1,0 +1,58 @@
+{
+ "schema_version": 1,
+ "created_at": "2026-10-17T09:40:21+00:00",
+ "source_store": "reviewed-experiences",
+ "policy": {
+  "name": "reviewed-experiences"
+ },
+ "policy_hash": "45ed604b69fd77ea984bf4494ac576512718d8f13ac51eeb0f5303b41fa6c33d",
+ "config": {
+  "retrieval": {
+   "top_k": 3,
+   "initial_max_tokens": 1500,
+   "tool_max_tokens": 1500,
+   "min_bm25": 2.0
+  },
+  "extractor": "rule-based experience extraction"
+ },
+ "experiences": [
+  {
+   "id": "exp-da081d10a5d1",
+   "content_hash": "12f5f741883d1955ff66ad381a4ace52c01c74fe99f257f560827864213d20d0",
+   "sources": [
+    {
+     "repo": "github.com/zuehlke/confz",
+     "family": "fam-confz",
+     "commit": "dfa9e97d050b82e715cea5a3bf0583c302074683",
+     "run_id": "source-001",
+     "steps": [
+      13
+     ]
+    }
+   ]
+  },
+  {
+   "id": "exp-f7961c98394c",
+   "content_hash": "2b4aeaa73c90bcb6f89df4e52c9b59fe784c9db223c23a9f7a8fe8ffaaff2661",
+   "sources": [
+    {
+     "repo": "github.com/developmentseed/geojson-pydantic",
+     "family": "fam-geojson-pydantic",
+     "commit": "0307e67dcd79d5675a69fe980a82bba4d011cb7b",
+     "run_id": "source-002",
+     "steps": [
+      11
+     ]
+    }
+   ]
+  }
+ ],
+ "excluded": [],
+ "files": {
+  "experiences/exp-da081d10a5d1.md": "2dde2182de3f7092e57925fcc0474b8abb3d35251e51e79f21ad6235582519f2",
+  "experiences/exp-f7961c98394c.md": "a4752cd502ea11e45a444d1ca5be97663813d18f1aa8b0c0d87338e569ad2b73",
+  "index.json": "7812b552555c169d82556f8d6f7022b8ac53f1c6bc6dc126fa09ab73c5b78634",
+  "MEMORY.md": "3acd8039b7c490c488a4ef8120b9bc1a1c62f803d8834c8ff12e9012dd227707"
+ },
+ "snapshot_hash": "97f7593b2638d1150a3b5c41a8d0091f3c31321067208138d69516ac00c56fd7"
+}

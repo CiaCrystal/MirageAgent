@@ -1,0 +1,425 @@
+name: pydantic-v2
+default: true
+from_version: pydantic 1.x
+to_version: pydantic >=2.7
+version_package: pydantic
+labels:
+  library: pydantic
+  Library: Pydantic
+  migration: pydantic v1 -> v2
+  new_api: pydantic v2
+  old_api: pydantic v1
+  old: v1
+  new: v2
+  compat_layer: pydantic.v1
+  example_symbol: pydantic.validator
+  example_attr_symbol: BaseModel.dict
+prompt_hints: |-
+  Pydantic v1 -> v2 quick reference (common cases only; verify behaviour with tests):
+  - @validator('f')  ->  @field_validator('f')  (需 @classmethod;pre=True → mode='before';always 已移除)
+  - @root_validator  ->  @model_validator(mode='before'|'after')  (after 模式下第一个参数是 self(实例),不是 cls/values)
+  - class Config:  ->  model_config = ConfigDict(...)  (ConfigDict 从 pydantic 导入)
+  - Config.orm_mode = True  ->  from_attributes=True
+  - Config.allow_population_by_field_name  ->  populate_by_name
+  - Config.anystr_strip_whitespace  ->  str_strip_whitespace
+  - Config.min_anystr_length / max_anystr_length  ->  str_min_length / str_max_length
+  - Config.validate_all  ->  validate_default
+  - Config.allow_mutation = False  ->  frozen=True
+  - Config.fields / Config.schema_extra  ->  Field(...) / json_schema_extra
+  - Config.extra = Extra.forbid  ->  extra='forbid'  (Extra 枚举已弃用)
+  - .dict()  ->  .model_dump()
+  - .json()  ->  .model_dump_json()
+  - .copy()  ->  .model_copy()
+  - .parse_obj(d)  ->  .model_validate(d)
+  - .parse_raw(s)  ->  .model_validate_json(s)
+  - .from_orm(o)  ->  .model_validate(o)  (需 from_attributes=True)
+  - .schema() / .schema_json()  ->  .model_json_schema() / json.dumps(...)
+  - .construct()  ->  .model_construct()
+  - .__fields__  ->  .model_fields  (类属性;实例上访问会有 deprecation 警告)
+  - .__fields_set__  ->  .model_fields_set
+  - Field(..., const=True)  ->  Literal[...] 类型
+  - Field(..., regex=...)  ->  Field(..., pattern=...)
+  - Field(..., min_items/max_items)  ->  Field(..., min_length/max_length)
+  - Field(..., allow_mutation=False)  ->  Field(..., frozen=True)
+  - Field(..., example=...)  ->  Field(..., examples=[...])
+  - Optional[X] 字段无默认值  ->  必须显式 `= None`  (v2 中 Optional 不再隐含默认 None)
+  - from pydantic import BaseSettings  ->  from pydantic_settings import BaseSettings  (独立包 pydantic-settings)
+  - pydantic.validate_arguments  ->  pydantic.validate_call
+  - ValidationError.errors()[i]['loc'] / ['msg']  ->  结构类似,但 msg 文案变化;type 字符串变化  (测试断言 msg 原文时要看具体差异)
+  - 自定义类型 __get_validators__  ->  __get_pydantic_core_schema__ 或 Annotated + BeforeValidator/AfterValidator
+  - GenericModel  ->  直接 BaseModel + Generic[T]
+  Hard rule for this target: do NOT use the `pydantic.v1` compatibility shim (`from pydantic.v1 import ...`) — it is not considered a migration. Do NOT pin pydantic back to 1.x.
+texts:
+  assemble.knowledge_hint: A `search_migration_docs` tool searches the official Pydantic v2 migration guide, docs, error-code reference, release notes and v1/v2 GitHub issues. When a failure is not covered by the quick reference or you are unsure how v2 behaves, search with the exact error message before editing.
+  assemble.codebase_hint: '`find_usages` lists every statically resolved use of a symbol in this repo (e.g. `pydantic.validator`, `BaseModel.dict`) and `search_codebase` finds the functions/classes responsible for a behaviour. Use them to locate all affected code instead of reading files one by one, and re-run `find_usages` after editing to check nothing was missed.'
+  assemble.memory_hint: '`search_experience` returns reviewed fixes that resolved the same error in other repositories'' migrations (minimal diff + test evidence). Query it with the exact error text when a failure is unfamiliar or persists; treat hits as hints, adapt them to this code, and never fix errors with pydantic.v1 imports or by patching pydantic at runtime.'
+  tools.search_migration_docs: 'Search the Pydantic v1->v2 migration knowledge base: the official migration guide, v2 docs (models, fields, validators, config, serialization, types, settings, JSON schema), the error-code reference (validation_errors / usage_errors), the v2.x release notes and GitHub issues about v1/v2 behaviour differences. Use it when a failure is not covered by the quick reference, when an error message or behaviour change is unfamiliar, or before guessing an API. `query` may be a natural-language question or a pasted error/traceback (paths and values are stripped automatically). Returns the top passages with their source URL.'
+  tools.find_usages: 'List every place in THIS repository that uses a symbol, resolved statically through imports, aliases and re-exports; comments and strings never match. Symbols: `pydantic.<name>` (e.g. pydantic.validator, pydantic.root_validator, pydantic.BaseSettings, pydantic.Extra, pydantic.parse_obj_as), `BaseModel.<attr>` for attribute access on values inferred to be pydantic models (e.g. BaseModel.dict, BaseModel.json, BaseModel.copy, BaseModel.parse_obj, BaseModel.__fields__, BaseModel.Config), or a repo definition by dotted module path (e.g. mypkg.models.User). Static inference can miss dynamically typed receivers; re-run after edits to see what is left.'
+  tools.search_experience: 'Search reviewed fix experiences distilled from successful Pydantic v1->v2 migrations of OTHER repositories. Each hit gives the normalised error, when the fix applies (and when not), the minimal diff that fixed it there and the test evidence. Use it with the exact error message or traceback excerpt when a failure is unfamiliar or persists. Hits are hints from other codebases: adapt names to this code and verify with the tests. Returns nothing when there is no reliable match; entries already shown in this run are not repeated.'
+  tools.experience_header: 'Fix experiences from other repositories (reviewed; hints only — adapt to this code and verify with the tests; never use pydantic.v1 imports or patch pydantic at runtime):'
+  loop.compat_shim_found: Tests pass, but pydantic.v1 compatibility imports remain.
+  stop_gate.compat_location: pydantic.v1 import
+  stop_gate.failed: |-
+    Tests pass, but after {returns} returns the output still patches pydantic or uses the v1 compatibility layer:
+    {where}
+  stop_gate.return: |-
+    [quality gate] All tests pass, but the migration is not acceptable yet. These changes patch the pydantic library at runtime or import the pydantic.v1 compatibility layer instead of migrating the code:
+    {where}
+    Remove them and migrate the calling code to the pydantic v2 API, then run the tests again. (Return {returns} of {max_returns}; after that the run is judged failed.)
+  replanner.rules: 'Rules: migrate the code to the new API. Never propose compatibility layers (pydantic.v1), patching the library at runtime, editing tests / conftest / pytest config, skip/xfail, or downgrading the target library. Upgrading other third-party dependencies with pip is allowed. Only reference files listed as editable. If some tests can only pass by editing read-only test code, list them under test_impossible.'
+  summarizer.prompt: |
+    You turn ONE evidence window from an automated pydantic v1 -> v2 migration run into a reusable memory entry.
+    The entry is {guide}
+
+    Rules:
+    - Use only facts in the evidence below. Write identifiers (class/function/attribute names, file names, error text) exactly
+      as they appear in the evidence and never mention one that does not appear there. Do not invent version numbers.
+    - Do not write code or diffs: the rule-extracted change is attached to the entry by the system.
+    - recipe: at most {n} general steps, each at most {c} characters. Never recommend pydantic.v1 imports, patching pydantic,
+      editing tests or pytest config, skip/xfail, or downgrading pydantic; put such warnings in pitfalls.
+    - symptoms / pitfalls / query_variants: at most {n} items each, each at most {c} characters. query_variants are other ways
+      the same error or question could be phrased in a search (reword, shorten, drop file-specific names).
+    - title: at most {t} characters. narrative values: at most {nc} characters each; keys exactly: {keys}.
+    - evidence_refs: copy the ref id(s) of the evidence you used, exactly.
+    - Keep the whole reply under 350 words.
+
+    {evidence}
+  summarizer.fix_guide: 'a FIX: the change shown resolved the error. narrative.root_cause = why pydantic v2 raises it (1-2 sentences).'
+  critic.prompt: |
+    You are a strict reviewer of memory entries for an automated pydantic v1 -> v2 migration agent.
+    Another model wrote the entry below from the evidence below. Score each 1-5 (5 = best):
+    - faithfulness: every statement in the entry is supported by the evidence.
+    - generality: the lesson would help on a different repository with the same pydantic v1 -> v2 problem.
+    - safety: following it cannot lead to forbidden fixes (pydantic.v1 imports, patching pydantic, editing tests,
+      skip/xfail, downgrading pydantic) or to broad risky edits.
+    Reply with JSON only; "reasons" at most 300 characters.
+
+    Entry ({kind}):
+    {entry}
+
+    {evidence}
+  consolidate.merge_prompt: |
+    Two memory entries from automated pydantic v1 -> v2 migrations. Are they the SAME reusable pattern
+    (same cause and the same kind of fix / lesson, so one entry should hold both sources)? Answer false when unsure.
+    Reply with JSON only; "reason" at most 200 characters.
+
+    Entry A:
+    {a}
+
+    Entry B:
+    {b}
+  memory.precondition: pydantic v2 is installed
+  memory.not_applicable: fixing it with `pydantic.v1` imports or by patching pydantic at runtime (not an acceptable migration)
+  memory.keeps_old: 'code that must keep running on pydantic v1 (the fix uses v2-only API: '
+  memory.old_api_use: the code still uses the v1 API
+knowledge_sources:
+- https://docs.pydantic.dev/latest/migration/
+- https://github.com/pydantic/pydantic/blob/main/HISTORY.md
+- https://docs.pydantic.dev/latest/concepts/models/
+- https://docs.pydantic.dev/latest/concepts/fields/
+- https://docs.pydantic.dev/latest/concepts/validators/
+- https://docs.pydantic.dev/latest/api/config/
+- https://docs.pydantic.dev/latest/concepts/serialization/
+- https://docs.pydantic.dev/latest/errors/validation_errors/
+- github-issues:pydantic/pydantic?q=migration+v2
+deprecated_symbols:
+- pydantic.validator
+- pydantic.root_validator
+- pydantic.BaseSettings
+- pydantic.Extra
+- pydantic.generics.GenericModel
+- pydantic.validate_arguments
+- pydantic.parse_obj_as
+- BaseModel.dict
+- BaseModel.json
+- BaseModel.copy
+- BaseModel.parse_obj
+- BaseModel.parse_raw
+- BaseModel.from_orm
+- BaseModel.schema
+- BaseModel.schema_json
+- BaseModel.construct
+- BaseModel.__fields__
+- BaseModel.Config
+planner:
+  canonical:
+    pydantic.class_validators.validator: pydantic.validator
+    pydantic.class_validators.root_validator: pydantic.root_validator
+    pydantic.env_settings.BaseSettings: pydantic.BaseSettings
+    pydantic.config.Extra: pydantic.Extra
+    pydantic.config.BaseConfig: pydantic.BaseConfig
+    pydantic.decorator.validate_arguments: pydantic.validate_arguments
+    pydantic.tools.parse_obj_as: pydantic.parse_obj_as
+    pydantic.main.BaseModel: pydantic.BaseModel
+    pydantic.main.create_model: pydantic.create_model
+  families:
+    BaseModel:
+      roots:
+      - pydantic.BaseModel
+      - pydantic.BaseSettings
+      - pydantic.generics.GenericModel
+      - pydantic_settings.BaseSettings
+      constructors:
+      - construct
+      - from_orm
+      - model_construct
+      - model_validate
+      - model_validate_json
+      - parse_file
+      - parse_obj
+      - parse_raw
+      - validate
+      instance_returning:
+      - copy
+      - model_copy
+      nested_classes:
+      - Config
+runtime_usage_probe:
+  warning: pydantic.warnings.PydanticDeprecatedSince20
+  env: {}
+  environment: target
+  symbols:
+    '@validator': pydantic.validator
+    '@root_validator': pydantic.root_validator
+    dict: BaseModel.dict
+    json: BaseModel.json
+    copy: BaseModel.copy
+    parse_obj: BaseModel.parse_obj
+    parse_raw: BaseModel.parse_raw
+    from_orm: BaseModel.from_orm
+    schema: BaseModel.schema
+    schema_json: BaseModel.schema_json
+    construct: BaseModel.construct
+    __fields__: BaseModel.__fields__
+    parse_obj_as: pydantic.parse_obj_as
+    validate_arguments: pydantic.validate_arguments
+quality:
+  patch_roots:
+  - pydantic
+  - pydantic_settings
+  - pydantic_core
+  compat_modules:
+  - pydantic.v1
+  compat_from_names:
+    pydantic:
+    - v1
+  pin:
+    package_regex: pydantic
+    probe_versions:
+    - '2.7'
+    - '2.99'
+    - '2.9999'
+    major_prefix: '2.'
+    extra_patterns:
+    - (?im)^\s*pydantic\s*=\s*[\"\']([~^]1\.[^\"\']*)
+  legacy_api:
+    attrs:
+    - dict
+    - json
+    - copy
+    - parse_obj
+    - parse_raw
+    - from_orm
+    - schema
+    - schema_json
+    - construct
+    - __fields__
+    - __fields_set__
+    imported_names:
+      pydantic:
+      - validator
+      - root_validator
+      - BaseSettings
+      - Extra
+      - validate_arguments
+      - parse_obj_as
+    nested_classes:
+    - Config
+  forbidden_patterns:
+  - from\s+pydantic\.v1\b
+  - import\s+pydantic\.v1\b
+  - pydantic\s*[<~=]=?\s*1\.
+  forbidden_approaches:
+  - - compatibility layer
+    - pydantic\.v1\b|from\s+pydantic\s+import\s+v1\b
+  - - patching the target library
+    - monkey[- ]?patch|patch(?:ing)?\s+(?:the\s+)?pydantic|setattr\(\s*pydantic|\bpydantic(?:\.\w+)+\s*=[^=]
+  - - editing tests or pytest config
+    - \b(?:edit|modify|change|rewrite|update|delete|remove)\w*\s+(?:the\s+)?(?:\w+\s+)?(?:tests?|test files?|conftest(?:\.py)?)\b|pytest\.ini|tox\.ini|filterwarnings
+  - - skip/xfail
+    - \b(?:pytest\.)?(?:skip|xfail)\b
+  - - downgrading the target library
+    - pydantic\s*(?:<\s*2|==\s*1|~=\s*1)|downgrad
+errors:
+  signature_rules:
+  - pattern: \[type=([\w_]+)
+    exception: ValidationError
+    symbol: pydantic.validation
+  doc_url_code_pattern: https?://errors\.pydantic\.dev/[\w.]+/[a-z]/([\w-]+)
+failure:
+  target_packages:
+  - pydantic
+  - pydantic_core
+  - pydantic_settings
+  library_exceptions:
+  - PydanticUserError
+  - PydanticImportError
+  - ValidationError
+  - ImportError
+  - AttributeError
+  - NameError
+  - TypeError
+  - PydanticSchemaGenerationError
+  target_raised_exceptions:
+  - PydanticUserError
+  - PydanticImportError
+  - ValidationError
+  impossible_exceptions:
+  - ImportError
+  - AttributeError
+  - PydanticImportError
+  - PydanticUserError
+  - NameError
+  deprecated_methods:
+  - from_orm
+  - parse_obj
+  - parse_raw
+  - parse_file
+  - construct
+  - schema_json
+  - update_forward_refs
+  removed_phrases:
+  - has been moved
+  - has been removed
+  - is deprecated
+  - no attribute
+  - cannot import name
+  - rather than
+  - must set the config
+  - must specify
+  - V1 style
+memory:
+  old_api:
+    validator: (?<![\w.])validator\b|\bpydantic\.validator\b
+    root_validator: \broot_validator\b
+    BaseSettings(pydantic): from\s+pydantic\s+import[^\n]*\bBaseSettings\b|\bpydantic\.BaseSettings\b
+    class Config: ^\s*class\s+Config\b
+    orm_mode: \borm_mode\b
+    allow_population_by_field_name: \ballow_population_by_field_name\b
+    anystr_strip_whitespace: \banystr_strip_whitespace\b
+    allow_mutation: \ballow_mutation\b
+    schema_extra: \bschema_extra\b
+    validate_all: \bvalidate_all\b
+    underscore_attrs_are_private: \bunderscore_attrs_are_private\b
+    smart_union: \bsmart_union\b
+    Extra: \bExtra\.\w+|import[^\n]*\bExtra\b
+    min_items: \bmin_items\b
+    max_items: \bmax_items\b
+    regex=: \bregex\s*=
+    const=: \bconst\s*=
+    each_item: \beach_item\b
+    pre=True: \bpre\s*=\s*True\b
+    always=True: \balways\s*=\s*True\b
+    .dict(): \.dict\(
+    .json(): \.json\(
+    .copy(): \.copy\(
+    .parse_obj(): \bparse_obj\b
+    .parse_raw(): \bparse_raw\b
+    .parse_file(): \bparse_file\b
+    .from_orm(): \bfrom_orm\b
+    .schema(): \.schema\(
+    .schema_json(): \bschema_json\b
+    .construct(): \.construct\(
+    update_forward_refs: \bupdate_forward_refs\b
+    __fields__: \b__fields__\b
+    __fields_set__: \b__fields_set__\b
+    __root__: \b__root__\b
+    parse_obj_as: \bparse_obj_as\b
+    GenericModel: \bGenericModel\b
+    validate_arguments: \bvalidate_arguments\b
+    __get_validators__: \b__get_validators__\b
+    __modify_schema__: \b__modify_schema__\b
+    ModelField: \bModelField\b
+    ErrorWrapper: \bErrorWrapper\b|\berror_wrappers\b
+    example=: \bexample\s*=
+    json_encoders: \bjson_encoders\b
+  new_api:
+    field_validator: \bfield_validator\b
+    model_validator: \bmodel_validator\b
+    ConfigDict: \bConfigDict\b
+    SettingsConfigDict: \bSettingsConfigDict\b
+    pydantic_settings: \bpydantic_settings\b
+    model_config: \bmodel_config\b
+    from_attributes: \bfrom_attributes\b
+    populate_by_name: \bpopulate_by_name\b
+    str_strip_whitespace: \bstr_strip_whitespace\b
+    frozen=: \bfrozen\s*=
+    json_schema_extra: \bjson_schema_extra\b
+    validate_default: \bvalidate_default\b
+    model_dump: \bmodel_dump\b
+    model_dump_json: \bmodel_dump_json\b
+    model_copy: \bmodel_copy\b
+    model_validate: \bmodel_validate\b
+    model_validate_json: \bmodel_validate_json\b
+    model_json_schema: \bmodel_json_schema\b
+    model_construct: \bmodel_construct\b
+    model_rebuild: \bmodel_rebuild\b
+    model_fields: \bmodel_fields\b
+    model_fields_set: \bmodel_fields_set\b
+    RootModel: \bRootModel\b
+    TypeAdapter: \bTypeAdapter\b
+    field_serializer: \bfield_serializer\b
+    model_serializer: \bmodel_serializer\b
+    computed_field: \bcomputed_field\b
+    validate_call: \bvalidate_call\b
+    __get_pydantic_core_schema__: \b__get_pydantic_core_schema__\b
+    __get_pydantic_json_schema__: \b__get_pydantic_json_schema__\b
+    pattern=: \bpattern\s*=
+    min_length=: \bmin_length\s*=
+    max_length=: \bmax_length\s*=
+    mode=before/after: \bmode\s*=\s*['\"](?:before|after|wrap|plain)['\"]
+    ValidationInfo: \bValidationInfo\b
+    BeforeValidator: \bBeforeValidator\b
+    AfterValidator: \bAfterValidator\b
+    examples=: \bexamples\s*=
+  extra_api_names:
+  - fields
+  tag_families:
+  - validator field_validator pre=True each_item always=True mode=before/after ValidationInfo
+  - root_validator model_validator mode=before/after
+  - BaseSettings BaseSettings(pydantic) pydantic_settings SettingsConfigDict
+  - Config ConfigDict model_config orm_mode from_attributes allow_population_by_field_name populate_by_name anystr_strip_whitespace str_strip_whitespace allow_mutation frozen= schema_extra json_schema_extra validate_all validate_default Extra underscore_attrs_are_private smart_union json_encoders
+  - dict .dict() model_dump
+  - json .json() model_dump_json
+  - copy .copy() model_copy
+  - parse_obj .parse_obj() model_validate
+  - parse_raw .parse_raw() parse_file .parse_file() model_validate_json
+  - from_orm .from_orm() model_validate from_attributes
+  - schema .schema() schema_json .schema_json() model_json_schema
+  - construct .construct() model_construct
+  - update_forward_refs model_rebuild
+  - __fields__ model_fields ModelField
+  - __fields_set__ model_fields_set
+  - __root__ RootModel
+  - parse_obj_as TypeAdapter
+  - validate_arguments validate_call
+  - __get_validators__ __get_pydantic_core_schema__ BeforeValidator AfterValidator
+  - __modify_schema__ __get_pydantic_json_schema__
+  - regex regex= pattern= const const=
+  - min_items max_items min_length= max_length=
+  - example= examples=
+  generic_names:
+  - BaseModel
+  - ValidationError
+  - e.g
+  - etc
+  - i.e
+  - pip
+  - pydantic
+  - pydantic-settings
+  - pydantic.v1
+  - pydantic_core
+  - pytest
+  version_key: pydantic
+  version_range: '>=2.0,<3'
+query_prefix: pydantic v2 migration

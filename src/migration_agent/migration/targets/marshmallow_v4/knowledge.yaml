@@ -1,0 +1,26 @@
+repo: marshmallow-code/marshmallow
+ref: c7b559a1fa3aba57ca6dba0ab336841c5038a782
+site: https://marshmallow.readthedocs.io/en/latest/
+raw_format: rst
+guide:
+  path: docs/upgrading.rst
+  site: upgrading.html
+  title: Upgrading to Newer Releases
+release_notes:
+  path: CHANGELOG.rst
+  url: https://github.com/{repo}/blob/{ref}/{path}
+  release_url: https://marshmallow.readthedocs.io/en/latest/changelog.html
+  keep_heading: '^## (\d+)\.'
+  keep_major: "4"
+  release_heading: '## (\d[\w.]*)\s*(?:\(([\d-]+)\))?'
+doc_pages:
+  - [docs, docs/quickstart.rst, quickstart.html, Quickstart]
+  - [docs, docs/nesting.rst, nesting.html, Nesting Schemas]
+  - [docs, docs/custom_fields.rst, custom_fields.html, Custom Fields]
+  - [docs, docs/marshmallow.experimental.context.rst, marshmallow.experimental.context.html, Context (experimental)]
+issue_queries:
+  - repo:marshmallow-code/marshmallow is:issue in:title "4.0"
+  - repo:marshmallow-code/marshmallow is:issue in:title upgrade
+issue_title_regex: '\b(?:3|4)\.\d|migrat|upgrad|RemovedInMarshmallow4'
+exclude_repos: [marshmallow-code/marshmallow-sqlalchemy]
+cache_dir: marshmallow

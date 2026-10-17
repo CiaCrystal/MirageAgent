@@ -1,0 +1,41 @@
+repo: sqlalchemy/sqlalchemy
+ref: bb8a90153888a5ca55576044dcdbcb20cd795afc
+site: https://docs.sqlalchemy.org/en/20/
+raw_format: rst
+guide:
+  path: doc/build/changelog/migration_20.rst
+  site: changelog/migration_20.html
+  title: SQLAlchemy 2.0 - Major Migration Guide
+release_notes:
+  path: doc/build/changelog/changelog_20.rst
+  url: https://github.com/{repo}/blob/{ref}/{path}
+  release_url: https://docs.sqlalchemy.org/en/20/changelog/changelog_20.html#change-{version_number}
+  keep_heading: '^## v(\d+)\.'
+  keep_major: "2"
+doc_pages:
+  - [docs, doc/build/changelog/whatsnew_20.rst, changelog/whatsnew_20.html, "What's New in SQLAlchemy 2.0?"]
+  - [errors, doc/build/errors.rst, errors.html, Error Messages]
+  - [docs, doc/build/core/connections.rst, core/connections.html, Working with Engines and Connections]
+  - [docs, doc/build/core/metadata.rst, core/metadata.html, Describing Databases with MetaData]
+  - [docs, doc/build/core/reflection.rst, core/reflection.html, Reflecting Database Objects]
+  - [docs, doc/build/core/inspection.rst, core/inspection.html, Runtime Inspection API]
+  - [docs, doc/build/core/selectable.rst, core/selectable.html, "SELECT and Related Constructs"]
+  - [docs, doc/build/tutorial/dbapi_transactions.rst, tutorial/dbapi_transactions.html, Working with Transactions and the DBAPI]
+  - [docs, doc/build/tutorial/data_select.rst, tutorial/data_select.html, Using SELECT Statements]
+  - [docs, doc/build/orm/session_basics.rst, orm/session_basics.html, Session Basics]
+  - [docs, doc/build/orm/session_transaction.rst, orm/session_transaction.html, Transactions and Connection Management]
+  - [docs, doc/build/orm/queryguide/select.rst, orm/queryguide/select.html, Writing SELECT statements for ORM Mapped Classes]
+  - [docs, doc/build/orm/queryguide/query.rst, orm/queryguide/query.html, Legacy Query API]
+  - [docs, doc/build/orm/declarative_tables.rst, orm/declarative_tables.html, Table Configuration with Declarative]
+  - [docs, doc/build/orm/mapping_styles.rst, orm/mapping_styles.html, ORM Mapped Class Overview]
+issue_queries:
+  - repo:sqlalchemy/sqlalchemy is:issue RemovedIn20Warning
+  - repo:sqlalchemy/sqlalchemy is:issue in:title "2.0" migration
+  - repo:sqlalchemy/sqlalchemy is:issue in:title "2.0" upgrade
+  - repo:sqlalchemy/sqlalchemy is:issue in:title "1.4" "2.0"
+  - repo:sqlalchemy/sqlalchemy is:issue "SQLALCHEMY_WARN_20"
+issue_title_regex: '\b(?:1\.4|2\.0)\b|migrat|upgrad|RemovedIn20'
+issue_noise_patterns:
+  - '### (?:Versions|Have a nice day!).*?(?=###|\Z)'
+exclude_repos: []
+cache_dir: sqlalchemy

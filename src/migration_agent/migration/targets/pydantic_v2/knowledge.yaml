@@ -1,0 +1,75 @@
+repo: pydantic/pydantic
+ref: 22c4317a5d51d71344275259b4e536c4a90fe53b
+site: https://docs.pydantic.dev/latest/
+raw_format: markdown
+guide:
+  path: docs/migration.md
+  site: migration/
+  title: Migration Guide
+release_notes:
+  path: HISTORY.md
+  url: https://github.com/{repo}/blob/{ref}/HISTORY.md
+  release_url: https://github.com/pydantic/pydantic/releases/tag/{version}
+  keep_heading: ^## v(\d+)\.
+  keep_major: '2'
+doc_pages:
+- - docs
+  - docs/concepts/models.md
+  - concepts/models/
+  - Models
+- - docs
+  - docs/concepts/fields.md
+  - concepts/fields/
+  - Fields
+- - docs
+  - docs/concepts/validators.md
+  - concepts/validators/
+  - Validators
+- - docs
+  - docs/concepts/config.md
+  - concepts/config/
+  - Configuration
+- - docs
+  - docs/concepts/serialization.md
+  - concepts/serialization/
+  - Serialization
+- - docs
+  - docs/concepts/types.md
+  - concepts/types/
+  - Types
+- - docs
+  - docs/concepts/type_adapter.md
+  - concepts/type_adapter/
+  - Type Adapter
+- - docs
+  - docs/concepts/pydantic_settings.md
+  - concepts/pydantic_settings/
+  - Settings Management
+- - docs
+  - docs/concepts/json_schema.md
+  - concepts/json_schema/
+  - JSON Schema
+- - errors
+  - docs/errors/validation_errors.md
+  - errors/validation_errors/
+  - Validation Errors
+- - errors
+  - docs/errors/usage_errors.md
+  - errors/usage_errors/
+  - Usage Errors
+issue_queries:
+- repo:pydantic/pydantic is:issue in:title v2
+- repo:pydantic/pydantic is:issue in:title v1
+- repo:pydantic/pydantic is:issue in:title migration
+- repo:pydantic/pydantic is:issue in:title migrate
+- repo:pydantic/pydantic is:issue in:title upgrade
+- repo:pydantic/pydantic is:issue label:"bug V2" "v1"
+- repo:pydantic/pydantic is:issue "pydantic v2" "pydantic v1"
+issue_title_regex: \bv\s?[12]\b|v[12]\.\d|migrat|upgrad
+issue_noise_patterns:
+- '### (?:Python, Pydantic & OS Version|Affected Components).*?(?=###|\Z)'
+exclude_repos: []
+cache_dir: pydantic
+issues_cache: issues.json
+index_subdir: index
+manifest_ref_key: pydantic_ref

@@ -1,0 +1,142 @@
+name: marshmallow-v4
+from_version: marshmallow 3.x
+to_version: marshmallow >=4.0
+version_package: marshmallow
+labels:
+  library: marshmallow
+  Library: marshmallow
+  migration: marshmallow 3 -> 4
+  new_api: marshmallow 4
+  old_api: marshmallow 3
+  old: "3"
+  new: "4"
+  compat_layer: marshmallow 3 compatibility-shim
+  example_symbol: marshmallow.utils.from_iso_datetime
+  example_attr_symbol: Schema.context
+prompt_hints: |-
+  marshmallow 3 -> 4 quick reference (common cases only; verify behaviour with tests):
+  - fields.X(default=...) / fields.X(missing=...)  ->  dump_default=... / load_default=...
+  - field metadata as keyword arguments (description=..., example=...)  ->  metadata={"description": ...}
+  - Schema(context={...}) / self.context  ->  contextvars.ContextVar (or marshmallow.experimental.context.Context)
+  - fields.Function / fields.Method callables no longer receive a context argument
+  - @pre_load(pass_many=True) / @post_dump(pass_many=True) ...  ->  pass_collection=True
+  - @validates("f") methods receive data_key as a keyword argument: def check(self, value, **kwargs)
+  - validators must raise ValidationError; returning False no longer fails validation
+  - fields.Number() / fields.Mapping() can no longer be used directly  ->  fields.Integer / Float / Decimal, fields.Dict
+  - fields.Nested("self")  ->  fields.Nested(lambda: MySchema(...))
+  - class Meta: fields = (...) / additional = (...) for undeclared fields  ->  declare the fields explicitly
+  - class Meta: ordered = True  ->  remove it (order is preserved by default)
+  - marshmallow.utils.from_iso_datetime / from_iso_date / isoformat ...  ->  datetime.fromisoformat / .isoformat()
+  - marshmallow.__version__  ->  importlib.metadata.version("marshmallow")
+  Hard rule for this target: do NOT pin marshmallow back to <4 and do NOT monkey-patch marshmallow to restore removed APIs.
+knowledge_sources:
+  - https://marshmallow.readthedocs.io/en/latest/upgrading.html
+  - https://marshmallow.readthedocs.io/en/latest/changelog.html
+deprecated_symbols:
+  - marshmallow.utils.from_iso_datetime
+  - marshmallow.utils.from_iso_date
+  - marshmallow.utils.from_iso_time
+  - marshmallow.utils.isoformat
+  - marshmallow.utils.to_iso_time
+  - marshmallow.utils.to_iso_datetime
+  - marshmallow.utils.from_rfc
+  - marshmallow.utils.rfcformat
+  - marshmallow.utils.pprint
+  - marshmallow.fields.Number
+  - marshmallow.fields.Mapping
+  - Schema.context
+  - pattern:default=
+  - pattern:missing=
+  - pattern:metadata kwargs
+  - pattern:context=
+  - pattern:pass_many=
+  - pattern:Nested("self")
+  - pattern:Meta.ordered
+  - pattern:@validates signature
+  - pattern:Function(obj, context)
+  - pattern:validate=lambda
+planner:
+  imported_variable_types: true
+  canonical:
+    marshmallow.schema.Schema: marshmallow.Schema
+  families:
+    Schema:
+      roots: [marshmallow.Schema]
+  text_patterns:
+    pattern:default=: '\bfields\.\w+\([^)]*\bdefault\s*='
+    pattern:missing=: '\bfields\.\w+\([^)]*\bmissing\s*='
+    pattern:metadata kwargs: '\bfields\.\w+\([^)]*\b(?:description|example|title|doc)\s*='
+    pattern:context=: '\b\w*Schema\([^)]*\bcontext\s*='
+    pattern:pass_many=: '\bpass_many\s*='
+    pattern:Nested("self"): '\bNested\(\s*["'']self["'']'
+    pattern:Meta.ordered: '^\s*ordered\s*=\s*True\b'
+    pattern:@validates signature: '^\s*def\s+\w+\(\s*self\s*,\s*\w+\s*\)\s*:'
+    pattern:Function(obj, context): '\bfields\.Function\(\s*lambda\s+\w+\s*,\s*\w+\s*:'
+    pattern:validate=lambda: '\bvalidate\s*=\s*lambda\b'
+runtime_usage_probe:
+  warning: marshmallow.warnings.Marshmallow4Warning
+  categories: [RemovedInMarshmallow4Warning, ChangedInMarshmallow4Warning]
+  env: {}
+  environment: source
+  source_packages: [marshmallow==3.26.2]
+  symbols: {}
+  message_symbols:
+    "The 'default' argument to fields": pattern:default=
+    "The 'missing' argument to fields": pattern:missing=
+    "Passing field metadata as keyword arguments": pattern:metadata kwargs
+    "The `context` parameter is deprecated": pattern:context=
+    "The `ordered` `class Meta` option": pattern:Meta.ordered
+    "Returning `False` from a validator": validator returning False
+    "`Number` field should not be instantiated": marshmallow.fields.Number
+    "`Mapping` field should not be instantiated": marshmallow.fields.Mapping
+    "Passing 'self' to `Nested`": pattern:Nested("self")
+quality:
+  patch_roots: [marshmallow]
+  compat_modules: []
+  pin:
+    package_regex: '(?<![\w.-])marshmallow'
+    probe_versions: ["4.0", "4.3.1"]
+    major_prefix: "4."
+    extra_patterns: ['(?im)^\s*marshmallow\s*=\s*["'']([~^]3\.[^"'']*)']
+  forbidden_patterns:
+    - '(?i)marshmallow\s*(?:<\s*4|==\s*3\.|~=\s*3\.)'
+  forbidden_approaches:
+    - [compatibility layer, '(?!x)x']
+    - [patching the target library, 'monkey[- ]?patch|patch(?:ing)?\s+(?:the\s+)?marshmallow|setattr\(\s*(?:marshmallow|fields|Schema)\b|\bmarshmallow(?:\.\w+)+\s*=[^=]']
+    - [editing tests or pytest config, '\b(?:edit|modify|change|rewrite|update|delete|remove)\w*\s+(?:the\s+)?(?:\w+\s+)?(?:tests?|test files?|conftest(?:\.py)?)\b|pytest\.ini|tox\.ini|filterwarnings']
+    - [skip/xfail, '\b(?:pytest\.)?(?:skip|xfail)\b']
+    - [downgrading the target library, 'marshmallow\s*(?:<\s*4|==\s*3|~=\s*3)|downgrad']
+errors:
+  signature_rules: []
+failure:
+  target_packages: [marshmallow]
+  library_exceptions: [TypeError, AttributeError, ImportError, ValidationError, KeyError]
+  target_raised_exceptions: [TypeError]
+  impossible_exceptions: [ImportError, AttributeError, NameError]
+  removed_phrases: [has been moved, has been removed, is deprecated, no attribute, cannot import name, unexpected keyword argument, "Can't instantiate abstract class"]
+memory:
+  old_api:
+    default=: '\bdefault\s*='
+    missing=: '\bmissing\s*='
+    context=: '\bcontext\s*='
+    pass_many: '\bpass_many\b'
+    Nested(self): 'Nested\(\s*["'']self'
+    ordered: '\bordered\s*=\s*True'
+    from_iso_datetime: '\bfrom_iso_\w+\('
+  new_api:
+    dump_default: '\bdump_default\s*='
+    load_default: '\bload_default\s*='
+    metadata=: '\bmetadata\s*='
+    ContextVar: '\bContextVar\b'
+    pass_collection: '\bpass_collection\b'
+    fromisoformat: '\bfromisoformat\('
+  extra_api_names: [Schema, fields, Field, Nested, Function, Method, validates, pre_load, post_load, ValidationError]
+  tag_families:
+    - default= dump_default missing= load_default
+    - context= ContextVar
+    - pass_many pass_collection
+    - from_iso_datetime fromisoformat
+  generic_names: [marshmallow, Schema, ValidationError, fields]
+  version_key: marshmallow
+  version_range: ">=4.0,<5"
+query_prefix: marshmallow 4 migration

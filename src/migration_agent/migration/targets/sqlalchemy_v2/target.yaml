@@ -1,0 +1,191 @@
+name: sqlalchemy-v2
+from_version: SQLAlchemy 1.4.x
+to_version: SQLAlchemy >=2.0,<2.1
+version_package: sqlalchemy
+labels:
+  library: sqlalchemy
+  Library: SQLAlchemy
+  migration: SQLAlchemy 1.4 -> 2.0
+  new_api: SQLAlchemy 2.0
+  old_api: SQLAlchemy 1.4
+  old: "1.4"
+  new: "2.0"
+  compat_layer: SQLAlchemy 1.x compatibility-shim
+  example_symbol: sqlalchemy.ext.declarative.declarative_base
+  example_attr_symbol: Engine.execute
+prompt_hints: |-
+  SQLAlchemy 1.4 -> 2.0 quick reference (common cases only; verify behaviour with tests):
+  - engine.execute(stmt) / "connectionless" execution  ->  with engine.connect() as conn: conn.execute(stmt); conn.commit()  (or with engine.begin() as conn: ...)
+  - library-level autocommit is gone: DML/DDL on a Connection needs conn.commit() or an engine.begin() block
+  - conn.execute("SELECT ...")  ->  conn.execute(text("SELECT ..."))  (or conn.exec_driver_sql(...))
+  - conn.execute(table.insert(), x=1)  ->  conn.execute(table.insert(), {"x": 1})  (one dict, or a list of dicts)
+  - select([a, b])  ->  select(a, b)
+  - row["col"]  ->  row._mapping["col"] or row.col  (Row is tuple-like; "col" in row is False)
+  - MetaData(bind=engine) / metadata.create_all()  ->  MetaData(); metadata.create_all(engine)
+  - Table(..., autoload=True)  ->  Table(..., autoload_with=engine)
+  - stmt.execute() / t.select().execute()  ->  conn.execute(stmt)
+  - engine.table_names() / engine.has_table(t)  ->  inspect(engine).get_table_names() / inspect(engine).has_table(t)
+  - Session(autocommit=True)  ->  default Session (autobegin) with explicit session.commit()
+  - from sqlalchemy.ext.declarative import declarative_base  ->  from sqlalchemy.orm import declarative_base (or class Base(DeclarativeBase))
+  - query.from_self()  ->  build a subquery and select from aliased(Entity, subq)
+  - session.query(M).get(pk)  ->  session.get(M, pk)  (Query.get still works in 2.0 but is legacy)
+  - Flask-SQLAlchemy 2.x predates SQLAlchemy 2.0: upgrade it to 3.x (pip install -U flask-sqlalchemy); upgrade other packages pinned to sqlalchemy<2 the same way
+  Hard rule for this target: do NOT pin SQLAlchemy back to <2.0 and do NOT monkey-patch removed APIs (e.g. Engine.execute) back onto SQLAlchemy.
+knowledge_sources:
+  - https://docs.sqlalchemy.org/en/20/changelog/migration_20.html
+  - https://docs.sqlalchemy.org/en/20/changelog/whatsnew_20.html
+  - https://docs.sqlalchemy.org/en/20/changelog/changelog_20.html
+  - https://docs.sqlalchemy.org/en/20/errors.html
+  - github-issues:sqlalchemy/sqlalchemy?q=2.0+migration
+deprecated_symbols:
+  - Engine.execute
+  - Engine.table_names
+  - Engine.has_table
+  - Engine.run_callable
+  - Engine.transaction
+  - MetaData.bind
+  - Executable.execute
+  - Query.from_self
+  - Query.select_entity_from
+  - sqlalchemy.ext.declarative.declarative_base
+  - pattern:select([...])
+  - pattern:execute(str)
+  - pattern:MetaData(bind=)
+  - pattern:autoload=True
+  - pattern:Session(autocommit=True)
+planner:
+  imported_variable_types: true
+  canonical:
+    sqlalchemy.engine.base.Engine: sqlalchemy.engine.Engine
+    sqlalchemy.engine.base.Connection: sqlalchemy.engine.Connection
+    sqlalchemy.engine.create_engine: sqlalchemy.create_engine
+    sqlalchemy.engine.create.create_engine: sqlalchemy.create_engine
+    sqlalchemy.engine_from_config: sqlalchemy.create_engine
+    sqlalchemy.sql.schema.MetaData: sqlalchemy.MetaData
+    sqlalchemy.schema.MetaData: sqlalchemy.MetaData
+    sqlalchemy.sql.schema.Table: sqlalchemy.Table
+    sqlalchemy.schema.Table: sqlalchemy.Table
+    sqlalchemy.orm.session.Session: sqlalchemy.orm.Session
+    sqlalchemy.orm.session.sessionmaker: sqlalchemy.orm.sessionmaker
+    sqlalchemy.orm.scoping.scoped_session: sqlalchemy.orm.scoped_session
+    sqlalchemy.orm.query.Query: sqlalchemy.orm.Query
+    sqlalchemy.ext.declarative.api.declarative_base: sqlalchemy.ext.declarative.declarative_base
+  families:
+    Engine:
+      roots: [sqlalchemy.engine.Engine]
+      factories: [sqlalchemy.create_engine]
+      method_returns: {connect: Connection, begin: Connection}
+    Connection:
+      roots: [sqlalchemy.engine.Connection]
+    MetaData:
+      roots: [sqlalchemy.MetaData]
+    Session:
+      roots: [sqlalchemy.orm.Session]
+      method_returns: {query: Query}
+    sessionmaker:
+      roots: [sqlalchemy.orm.sessionmaker, sqlalchemy.orm.scoped_session]
+      call_returns: Session
+      method_returns: {query: Query}
+    Query:
+      roots: [sqlalchemy.orm.Query]
+      instance_returning: [filter, filter_by, order_by, join, outerjoin, options, limit, offset, distinct, group_by, having, with_entities, select_from, where]
+    Executable:
+      roots: [sqlalchemy.sql.Select, sqlalchemy.sql.expression.Select]
+  text_patterns:
+    pattern:select([...]): '\bselect\(\s*\['
+    pattern:execute(str): '\.execute\(\s*(?:[rRuU]|[fF])?["'']'
+    pattern:MetaData(bind=): '\bMetaData\([^)]*\bbind\s*='
+    pattern:autoload=True: '\bautoload\s*=\s*True'
+    pattern:Session(autocommit=True): '\b(?:Session|sessionmaker)\([^)]*\bautocommit\s*=\s*True'
+runtime_usage_probe:
+  warning: sqlalchemy.exc.SADeprecationWarning
+  categories: [RemovedIn20Warning, MovedIn20Warning, SADeprecationWarning]
+  env: {SQLALCHEMY_WARN_20: "1"}
+  environment: source
+  source_packages: [sqlalchemy==1.4.54]
+  symbols: {}
+  message_symbols:
+    'The Engine\.execute\(\) method': Engine.execute
+    'Engine\.table_names\(\)': Engine.table_names
+    'Engine\.has_table\(\)': Engine.has_table
+    'Engine\.run_callable': Engine.run_callable
+    'Engine\.transaction': Engine.transaction
+    'Passing a string to Connection\.execute\(\)': pattern:execute(str)
+    'The MetaData\.bind argument': pattern:MetaData(bind=)
+    'MetaData\.bind': MetaData.bind
+    'legacy calling style of select\(\)': pattern:select([...])
+    'Executable\.execute\(\)': Executable.execute
+    'Session\.autocommit parameter': pattern:Session(autocommit=True)
+    'autoload': pattern:autoload=True
+    'declarative_base\(\)`` function is now available': sqlalchemy.ext.declarative.declarative_base
+    'Query\.from_self\(\)': Query.from_self
+    'Query\.select_entity_from': Query.select_entity_from
+    'non-integer/slice indices on Row': Row[str]
+    'accept parameters as a single dictionary': Connection.execute(kwargs)
+quality:
+  patch_roots: [sqlalchemy]
+  compat_modules: []
+  pin:
+    package_regex: '(?<![\w.-])sqlalchemy'
+    probe_versions: ["2.0", "2.0.54"]
+    major_prefix: "2."
+    extra_patterns: ['(?im)^\s*sqlalchemy\s*=\s*["'']([~^]1\.[^"'']*)']
+  legacy_api:
+    calls: [query]
+    imported_names:
+      sqlalchemy.ext.declarative: [declarative_base]
+  forbidden_patterns:
+    - '(?i)sqlalchemy\s*(?:<\s*2|==\s*1\.|~=\s*1\.)'
+  forbidden_approaches:
+    - [compatibility layer, '(?!x)x']
+    - [patching the target library, 'monkey[- ]?patch|patch(?:ing)?\s+(?:the\s+)?sqlalchemy|setattr\(\s*(?:sqlalchemy|Engine|Connection|Session|Query)\b|\b(?:sqlalchemy(?:\.\w+)+|Engine|Connection)\.\w+\s*=[^=]']
+    - [editing tests or pytest config, '\b(?:edit|modify|change|rewrite|update|delete|remove)\w*\s+(?:the\s+)?(?:\w+\s+)?(?:tests?|test files?|conftest(?:\.py)?)\b|pytest\.ini|tox\.ini|filterwarnings']
+    - [skip/xfail, '\b(?:pytest\.)?(?:skip|xfail)\b']
+    - [downgrading the target library, 'sqlalchemy\s*(?:<\s*2|==\s*1|~=\s*1)|downgrad']
+errors:
+  signature_rules: []
+  doc_url_code_pattern: 'https?://sqlalche\.me/e/(?:[\d.]+/)?(\w+)'
+failure:
+  target_packages: [sqlalchemy]
+  library_exceptions: [ObjectNotExecutableError, ArgumentError, InvalidRequestError, UnboundExecutionError, AttributeError, TypeError, ImportError]
+  target_raised_exceptions: [ObjectNotExecutableError, ArgumentError, InvalidRequestError, UnboundExecutionError]
+  impossible_exceptions: [ImportError, AttributeError, NameError, ObjectNotExecutableError, ArgumentError]
+  deprecated_methods: []
+  removed_phrases: [has been moved, has been removed, is deprecated, no attribute, cannot import name, no longer supported, Not an executable object, unexpected keyword argument, is not directly bound, tuple indices must be integers]
+memory:
+  old_api:
+    engine.execute: '\bengine\.execute\('
+    execute(str): '\.execute\(\s*["'']'
+    select([...]): '\bselect\(\s*\['
+    MetaData(bind=): '\bMetaData\([^)]*bind\s*='
+    autoload=True: '\bautoload\s*=\s*True'
+    row[str]: '\brow\[\s*["'']'
+    autocommit=True: '\bautocommit\s*=\s*True'
+    declarative_base(ext): 'sqlalchemy\.ext\.declarative\b[^\n]*\bdeclarative_base\b'
+    table_names: '\btable_names\('
+    from_self: '\bfrom_self\('
+  new_api:
+    text(): '\btext\('
+    exec_driver_sql: '\bexec_driver_sql\('
+    engine.begin: '\.begin\(\)'
+    conn.commit: '\.commit\(\)'
+    _mapping: '\b_mapping\b'
+    autoload_with: '\bautoload_with\s*='
+    inspect(): '\binspect\('
+    Session.get: '\bsession\.get\('
+    DeclarativeBase: '\bDeclarativeBase\b'
+    declarative_base(orm): 'sqlalchemy\.orm\b[^\n]*\bdeclarative_base\b'
+  extra_api_names: [Engine, Connection, Row, MetaData, Session, Query, execute, select, text, scalar, scalars, mappings]
+  tag_families:
+    - engine.execute execute(str) text() exec_driver_sql engine.begin conn.commit execute
+    - select([...]) select
+    - row[str] _mapping Row mappings
+    - MetaData(bind=) autoload=True autoload_with MetaData
+    - autocommit=True conn.commit engine.begin
+    - table_names inspect()
+    - declarative_base(ext) declarative_base(orm) DeclarativeBase
+    - from_self Query Session.get
+  generic_names: [sqlalchemy, SQLAlchemy, Engine, Connection, Session, Query, Row, MetaData, Table, select, text]
+  version_key: sqlalchemy
+  version_range: ">=2.0,<3"
+query_prefix: SQLAlchemy 2.0 migration

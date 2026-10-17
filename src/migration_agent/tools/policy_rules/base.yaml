@@ -1,0 +1,12 @@
+rules:
+  - id: tests-read-only
+    tool: [edit_file, write_file, insert_line, multi_edit]
+    path: "{protected}"
+    decision: deny
+    message: "'{path}' is a test file and is read-only. Fix the source code instead."
+  - id: abandoned-file-lock
+    tool: [edit_file, write_file, insert_line, multi_edit]
+    path: "{locked}"
+    decision: deny
+    meta_key: locked_file
+    message: "{path} was abandoned by the strategy controller ({reason}); it is locked for this run. Work on the remaining failures instead."
