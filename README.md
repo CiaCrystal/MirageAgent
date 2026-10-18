@@ -1,6 +1,6 @@
 # MirageAgent
 
-MirageAgent 是一个由 LLM 驱动的 Python 库迁移 Agent。它在受约束的执行环境里读取报错、定位旧 API、修改源码并运行项目自带的测试，支持 Pydantic v1 → v2、SQLAlchemy 1.4 → 2.0 与 marshmallow 3 → 4。
+MirageAgent 是一个由 LLM 驱动的 Python 库迁移 Agent。它在受约束的执行环境里读取报错、定位旧 API、修改源码并运行项目自带的测试。
 
 ## 特性
 
